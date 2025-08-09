@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Interactive Calculator with Sound</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .btn-press {
+            transform: scale(0.95);
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+        .btn-release {
+            transition: all 0.2s ease;
+        }
+        .display-text {
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+        }
+        .history-text {
+            font-size: clamp(0.8rem, 2vw, 1rem);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="calculator-container w-full max-w-md">
+        <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl shadow-2xl overflow-hidden p-6">
+            <!-- Display Area -->
+            <div class="display-area bg-gray-700 rounded-xl p-4 mb-6 h-24 flex flex-col justify-between">
+                <div class="history-text text-gray-400 text-right truncate" id="history"></div>
+                <div class="display-text text-white font-semibold text-right truncate" id="display">0</div>
+            </div>
+            
+            <!-- Button Grid -->
+            <div class="grid grid-cols-4 gap-3">
+                <!-- First Row -->
+                <button onclick="clearAll()" class="btn bg-red-500 hover:bg-red-600 text-white font-bold py-4 rounded-xl transition-all duration-200 active:btn-press">AC</button>
+                <button onclick="toggleSign()" class="btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-4 rounded-xl transition-all duration-200 active:btn-press">+/-</button>
+                <button onclick="percentage()" class="btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-4 rounded-xl transition-all duration-200 active:btn-press">%</button>
+                <button onclick="appendOperator('/')" class="btn bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl transition-all duration-200 active:btn-press">÷</button>
+                
+                <!-- Second Row -->
+                <button onclick="appendNumber('7')" class="btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-xl transition-all duration-200 active:btn-press">7</button>
+                <button onclick="appendNumber('8')" class="btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-xl transition-all duration-200 active:btn-press">8</button>
+                <button onclick="appendNumber('9')" class="btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-xl transition-all duration-200 active:btn-press">9</button>
+                <button onclick="appendOperator('*')" class="btn bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl transition-all duration-200 active:btn-press">×</button>
+                
+                <!-- Third Row -->
+                <button onclick="appendNumber('4')" class="btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-xl transition-all duration-200 active:btn-press">4</button>
+                <button onclick="appendNumber('5')" class="btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-xl transition-all duration-200 active:btn-press">5</button>
+                <button onclick="appendNumber('6')" class="btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-xl transition-all duration-200 active:btn-press">6</button>
+                <button onclick="appendOperator('-')" class="btn bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl transition-all duration-200 active:btn-press">-</button>
+                
+                <!-- Fourth Row -->
+                <button onclick="appendNumber('1')" class="btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-xl transition-all duration-200 active:btn-press">1</button>
+                <button onclick="appendNumber('2')" class="btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-xl transition-all duration-200 active:btn-press">2</button>
+                <button onclick="appendNumber('3')" class="btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-xl transition-all duration-200 active:btn-press">3</button>
+                <button onclick="appendOperator('+')" class="btn bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl transition-all duration-200 active:btn-press">+</button>
+                
+                <!-- Fifth Row -->
+                <button onclick="appendNumber('0')" class="btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-xl col-span-2 transition-all duration-200 active:btn-press">0</button>
+                <button onclick="appendDecimal()" class="btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-xl transition-all duration-200 active:btn-press">.</button>
+                <button onclick="calculate()" class="btn bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl transition-all duration-200 active:btn-press">=</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sound audio element -->
+    <audio id="click-sound" src="https://freesound.org/data/previews/256/256113_3263906-lq.mp3" preload="auto"></audio>
+
+    <script>
+        // Calculator state
+        let currentInput = '0';
+        let previousInput = '';
+        let operation = null;
+        let resetInput = false;
+        let calculationHistory = '';
+
+        // DOM elements
+        const display = document.getElementById('display');
+        const historyDisplay = document.getElementById('history');
+        const clickSound = document.getElementById('click-sound');
+
+        function playClickSound() {
+            clickSound.currentTime = 0;
+            clickSound.play();
+        }
+
+        // Update display
+        function updateDisplay() {
+            display.textContent = currentInput;
+            historyDisplay.textContent = calculationHistory;
+        }
+
+        // Append number
+        function appendNumber(number) {
+            if (currentInput === '0' || resetInput) {
+                currentInput = number;
+                resetInput = false;
+            } else {
+                currentInput += number;
+            }
+            updateDisplay();
+        }
+
+        // Append decimal point
+        function appendDecimal() {
+            if (resetInput) {
+                currentInput = '0.';
+                resetInput = false;
+            } else if (!currentInput.includes('.')) {
+                currentInput += '.';
+            }
+            updateDisplay();
+        }
+
+        // Toggle sign
+        function toggleSign() {
+            currentInput = (parseFloat(currentInput) * -1).toString();
+            updateDisplay();
+        }
+
+        // Percentage
+        function percentage() {
+            currentInput = (parseFloat(currentInput) / 100).toString();
+            updateDisplay();
+        }
+
+        // Append operator
+        function appendOperator(op) {
+            if (operation !== null && !resetInput) {
+                calculate();
+            }
+            
+            const operatorSymbol = 
+                op === '+' ? '+' :
+                op === '-' ? '-' :
+                op === '*' ? '×' :
+                op === '/' ? '÷' : op;
+                
+            calculationHistory = `${currentInput} ${operatorSymbol}`;
+            previousInput = currentInput;
+            operation = op;
+            resetInput = true;
+            updateDisplay();
+        }
+
+        // Calculate result
+        function calculate() {
+            if (operation === null || resetInput) return;
+            
+            let result;
+            const prev = parseFloat(previousInput);
+            const current = parseFloat(currentInput);
+            
+            switch (operation) {
+                case '+':
+                    result = prev + current;
+                    break;
+                case '-':
+                    result = prev - current;
+                    break;
+                case '*':
+                    result = prev * current;
+                    break;
+                case '/':
+                    result = prev / current;
+                    break;
+                default:
+                    return;
+            }
+            
+            calculationHistory = `${previousInput} ${operation === '*' ? '×' : operation === '/' ? '÷' : operation} ${currentInput} =`;
+            currentInput = result.toString();
+            operation = null;
+            resetInput = true;
+            updateDisplay();
+        }
+
+        // Clear all
+        function clearAll() {
+            currentInput = '0';
+            previousInput = '';
+            operation = null;
+            calculationHistory = '';
+            updateDisplay();
+        }
+
+        // Add button press effect + play sound
+        document.querySelectorAll('.btn').forEach(button => {
+            button.addEventListener('mousedown', () => {
+                button.classList.add('btn-press');
+                button.classList.remove('btn-release');
+                playClickSound();
+            });
+            
+            button.addEventListener('mouseup', () => {
+                button.classList.remove('btn-press');
+                button.classList.add('btn-release');
+            });
+            
+            button.addEventListener('mouseleave', () => {
+                button.classList.remove('btn-press');
+                button.classList.add('btn-release');
+            });
+        });
+
+        // Keyboard support + play sound on valid keys
+        document.addEventListener('keydown', (e) => {
+            if ((e.key >= '0' && e.key <= '9') || ['.', '+', '-', '*', '/', '%', 'Enter', '=', 'Escape', 'Backspace'].includes(e.key)) {
+                playClickSound();
+            }
+
+            if (e.key >= '0' && e.key <= '9') appendNumber(e.key);
+            else if (e.key === '.') appendDecimal();
+            else if (e.key === '+') appendOperator('+');
+            else if (e.key === '-') appendOperator('-');
+            else if (e.key === '*') appendOperator('*');
+            else if (e.key === '/') appendOperator('/');
+            else if (e.key === '%') percentage();
+            else if (e.key === 'Enter' || e.key === '=') calculate();
+            else if (e.key === 'Escape') clearAll();
+            else if (e.key === 'Backspace') {
+                if (currentInput.length === 1 || (currentInput.length === 2 && currentInput.startsWith('-'))) {
+                    currentInput = '0';
+                } else {
+                    currentInput = currentInput.slice(0, -1);
+                }
+                updateDisplay();
+            }
+        });
+    </script>
+</body>
+</html>
